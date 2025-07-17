@@ -10,21 +10,48 @@ db = Database("ext_events")
 
 
 async def create_ticket(
-    payment_hash: str, wallet: str, event: str, name: str, email: str
+    payment_hash: str, 
+    wallet: str, 
+    event: str, 
+    name: Optional[str] = None, 
+    email: Optional[str] = None,
+    user_id: Optional[str] = None
 ) -> Ticket:
     now = datetime.now(timezone.utc)
+    
+    # Handle database constraints: if user_id is provided, use empty strings for name/email
+    if user_id:
+        db_name = ""
+        db_email = ""
+    else:
+        db_name = name or ""
+        db_email = email or ""
+    
     ticket = Ticket(
         id=payment_hash,
         wallet=wallet,
         event=event,
         name=name,
         email=email,
+        user_id=user_id,
         registered=False,
         paid=False,
         reg_timestamp=now,
         time=now,
     )
-    await db.insert("events.ticket", ticket)
+    
+    # Create a dict for database insertion with proper handling of constraints
+    ticket_dict = ticket.dict()
+    ticket_dict["name"] = db_name
+    ticket_dict["email"] = db_email
+    
+    await db.execute(
+        """
+        INSERT INTO events.ticket (id, wallet, event, name, email, user_id, registered, paid, time, reg_timestamp)
+        VALUES (:id, :wallet, :event, :name, :email, :user_id, :registered, :paid, :time, :reg_timestamp)
+        """,
+        ticket_dict
+    )
     return ticket
 
 
@@ -34,21 +61,40 @@ async def update_ticket(ticket: Ticket) -> Ticket:
 
 
 async def get_ticket(payment_hash: str) -> Optional[Ticket]:
-    return await db.fetchone(
+    row = await db.fetchone(
         "SELECT * FROM events.ticket WHERE id = :id",
         {"id": payment_hash},
-        Ticket,
     )
+    if not row:
+        return None
+    
+    # Convert empty strings back to None for the model
+    ticket_data = dict(row)
+    if ticket_data.get("name") == "":
+        ticket_data["name"] = None
+    if ticket_data.get("email") == "":
+        ticket_data["email"] = None
+    
+    return Ticket(**ticket_data)
 
 
 async def get_tickets(wallet_ids: Union[str, list[str]]) -> list[Ticket]:
     if isinstance(wallet_ids, str):
         wallet_ids = [wallet_ids]
     q = ",".join([f"'{wallet_id}'" for wallet_id in wallet_ids])
-    return await db.fetchall(
-        f"SELECT * FROM events.ticket WHERE wallet IN ({q})",
-        model=Ticket,
-    )
+    rows = await db.fetchall(f"SELECT * FROM events.ticket WHERE wallet IN ({q})")
+    
+    tickets = []
+    for row in rows:
+        # Convert empty strings back to None for the model
+        ticket_data = dict(row)
+        if ticket_data.get("name") == "":
+            ticket_data["name"] = None
+        if ticket_data.get("email") == "":
+            ticket_data["email"] = None
+        tickets.append(Ticket(**ticket_data))
+    
+    return tickets
 
 
 async def delete_ticket(payment_hash: str) -> None:
@@ -107,8 +153,19 @@ async def delete_event(event_id: str) -> None:
 
 
 async def get_event_tickets(event_id: str) -> list[Ticket]:
-    return await db.fetchall(
+    rows = await db.fetchall(
         "SELECT * FROM events.ticket WHERE event = :event",
         {"event": event_id},
-        Ticket,
     )
+    
+    tickets = []
+    for row in rows:
+        # Convert empty strings back to None for the model
+        ticket_data = dict(row)
+        if ticket_data.get("name") == "":
+            ticket_data["name"] = None
+        if ticket_data.get("email") == "":
+            ticket_data["email"] = None
+        tickets.append(Ticket(**ticket_data))
+    
+    return tickets
