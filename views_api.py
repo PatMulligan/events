@@ -27,6 +27,7 @@ from .crud import (
     get_events,
     get_ticket,
     get_tickets,
+    get_tickets_by_user_id,
     purge_unpaid_tickets,
     update_event,
     update_ticket,
@@ -111,6 +112,12 @@ async def api_tickets(
         wallet_ids = user.wallet_ids if user else []
 
     return await get_tickets(wallet_ids)
+
+
+@events_api_router.get("/api/v1/tickets/user/{user_id}")
+async def api_tickets_by_user_id(user_id: str) -> list[Ticket]:
+    """Get all tickets for a specific user by their user_id"""
+    return await get_tickets_by_user_id(user_id)
 
 
 @events_api_router.post("/api/v1/tickets/{event_id}")

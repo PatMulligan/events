@@ -109,6 +109,26 @@ async def get_tickets(wallet_ids: Union[str, list[str]]) -> list[Ticket]:
     return tickets
 
 
+async def get_tickets_by_user_id(user_id: str) -> list[Ticket]:
+    """Get all tickets for a specific user by their user_id"""
+    rows = await db.fetchall(
+        "SELECT * FROM events.ticket WHERE user_id = :user_id ORDER BY time DESC",
+        {"user_id": user_id}
+    )
+    
+    tickets = []
+    for row in rows:
+        # Convert empty strings back to None for the model
+        ticket_data = dict(row)
+        if ticket_data.get("name") == "":
+            ticket_data["name"] = None
+        if ticket_data.get("email") == "":
+            ticket_data["email"] = None
+        tickets.append(Ticket(**ticket_data))
+    
+    return tickets
+
+
 async def delete_ticket(payment_hash: str) -> None:
     await db.execute("DELETE FROM events.ticket WHERE id = :id", {"id": payment_hash})
 
