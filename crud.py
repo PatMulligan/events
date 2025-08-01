@@ -56,7 +56,19 @@ async def create_ticket(
 
 
 async def update_ticket(ticket: Ticket) -> Ticket:
-    await db.update("events.ticket", ticket)
+    # Create a new Ticket object with corrected values for database constraints
+    ticket_dict = ticket.dict()
+    
+    # Convert None values to empty strings for database constraints
+    if ticket_dict.get("name") is None:
+        ticket_dict["name"] = ""
+    if ticket_dict.get("email") is None:
+        ticket_dict["email"] = ""
+    
+    # Create a new Ticket object with the corrected values
+    corrected_ticket = Ticket(**ticket_dict)
+    
+    await db.update("events.ticket", corrected_ticket)
     return ticket
 
 
