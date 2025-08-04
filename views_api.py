@@ -52,6 +52,18 @@ async def api_events(
     return [event.dict() for event in await get_events(wallet_ids)]
 
 
+@events_api_router.get("/api/v1/events/public")
+async def api_events_public():
+    """
+    Retrieve all events in the database with read-only access.
+    This endpoint allows access to all events using any valid API key (read access).
+    """
+    # Get all events from the database without wallet filtering
+    from .crud import get_all_events
+    events = await get_all_events()
+    return [event.dict() for event in events]
+
+
 @events_api_router.post("/api/v1/events")
 @events_api_router.put("/api/v1/events/{event_id}")
 async def api_event_create(

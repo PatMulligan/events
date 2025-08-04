@@ -180,6 +180,14 @@ async def get_events(wallet_ids: Union[str, list[str]]) -> list[Event]:
     )
 
 
+async def get_all_events() -> list[Event]:
+    """Get all events from the database without wallet filtering."""
+    return await db.fetchall(
+        "SELECT * FROM events.events ORDER BY time DESC",
+        model=Event,
+    )
+
+
 async def delete_event(event_id: str) -> None:
     await db.execute("DELETE FROM events.events WHERE id = :id", {"id": event_id})
 
